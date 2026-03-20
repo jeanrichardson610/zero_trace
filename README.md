@@ -29,7 +29,7 @@ Supports anonymous usernames, instant messaging with images, and ephemeral rooms
 - **Self-Destructing Rooms** — TTL-based ephemeral chat rooms (10 min default)  
 - **Manual Destruction** — Users can destroy a room anytime, notifying all participants  
 - **Real-Time Messaging** — Instant text & image messages using Upstash Realtime  
-- **Image Preview Modal** — Smooth fade & scale animations for uploaded images  
+- **Image & GIF Uploads** — Upload images and GIFs with real-time preview modal  
 - **Dark/Light Theme Toggle** — Persistent UI theme with smooth transitions  
 - **Secure Access Control** — Proxy middleware and auth tokens stored in HTTP-only cookies  
 - **Room Access Validation** — Max 2 participants per room; redirects for invalid/full rooms  
@@ -49,6 +49,7 @@ Supports anonymous usernames, instant messaging with images, and ephemeral rooms
 | Realtime | Upstash Realtime |
 | Database | Redis |
 | Utilities | nanoid, date-fns, zod |
+| File Storage | Vercel Blob (images & GIFs) |
 
 ---
 
@@ -121,7 +122,27 @@ Realtime architecture, ephemeral backend design, middleware-based auth, responsi
 
 ---
 
-### 7️⃣ Future Implementations
+### 7️⃣ Image & GIF Uploads on Vercel
+
+**Problem:**  
+- Uploads worked locally with `fs` but failed on Vercel.  
+- Errors included `500` responses and "No token found" for blob storage.  
+- Pre-existing solutions using `/public/uploads` do **not persist** on serverless platforms.  
+
+**Solution:**  
+- Switched to **Vercel Blob storage** for serverless-friendly file hosting.  
+- Added validations for:
+  - Allowed types (`image/png`, `image/jpeg`, `image/gif`)  
+  - Max file size (`5 MB`)  
+- Generated unique filenames using `Date.now()` + original name to avoid collisions.  
+- Uploaded files are **publicly accessible** via a URL, compatible with your chat modal.  
+
+**Lesson Learned:**  
+Serverless environments require **external or cloud-backed storage** for persistent uploads. Local `fs` works in development but **not on Vercel**. Using Vercel Blob ensures images and GIFs display properly in real-time chat.
+
+---
+
+### 8️⃣ Future Implementations
 
 - Light mode
 - More users allowed in the room (will need more space for backend, possibly paid account)
@@ -130,6 +151,7 @@ Realtime architecture, ephemeral backend design, middleware-based auth, responsi
 - Offline support with local caching
 - Custom TTL per room on creation
 
+---
 
 ## 👨‍💻 Installation
 
