@@ -102,26 +102,29 @@ const Page = () => {
 
   // Send file
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    const formData = new FormData();
-    formData.append("file", file);
+  const formData = new FormData();
+  formData.append("file", file);
 
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
+  const res = await fetch("/api/upload", {
+    method: "POST",
+    body: formData,
+  });
 
-    const data = await res.json();
+  const data = await res.json();
 
-    await client.messages.post(
-      { sender: username, image: data.url, text: "" },
-      { query: { roomId } },
-    );
+  if (!data.url) return;
 
-    refetch();
-  };
+  // Send the Base64 data as the "image" in your chat
+  await client.messages.post(
+    { sender: username, image: data.url, text: "" },
+    { query: { roomId } }
+  );
+
+  refetch();
+};
 
   // Real-time updates
   useRealtime({
