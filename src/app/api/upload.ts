@@ -1,51 +1,45 @@
 // /api/upload.ts
-import { IncomingForm, File } from "formidable";
-import fs from "fs";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { redis } from "@/lib/redis";
-import { nanoid } from "nanoid";
+import { redis } from "@/lib/redis"
+import { nanoid } from "nanoid"
 
-// Disable built-in body parsing
 export const config = {
   api: {
     bodyParser: false,
   },
-};
+}
 
-// Strongly type the files
-type FormidableFile = File & { filepath: string; mimetype: string };
+export default async function handler(req: Request) {
+  try {
+    const formData = await req.formData()
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  const form = new IncomingForm({
-    multiples: false,
-    keepExtensions: true,
-  });
+    const file = formData.get("file") as File | null
 
-  form.parse(req, async (err, fields, files) => {
-    if (err) return res.status(500).json({ error: "Upload failed" });
+    if (!file) {
+      return new Response(
+        JSON.stringify({ error: "No file" }),
+        { status: 400 }
+      )
+    }
 
-    // Type assertion for TS
-    const file = (files?.file as unknown as FormidableFile) || null;
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const base64 = buffer.toString("base64")
 
-    if (!file) return res.status(400).json({ error: "No file uploaded" });
+    const key = `file:${nanoid()}`
 
-    // Read file as Base64
-    const data = fs.readFileSync(file.filepath);
-    const base64 = data.toString("base64");
+    await redis.set(key, base64, { ex: 60 * 10 })
 
-    // Generate a unique key
-    const key = `file:${nanoid()}`;
+    const url = `data:${file.type};base64,${base64}`
 
-    // Store in Redis with TTL (10 minutes)
-    await redis.set(key, base64, { ex: 60 * 10 });
+    return new Response(
+      JSON.stringify({ url, key }),
+      { status: 200 }
+    )
+  } catch (err) {
+    console.error(err)
 
-    // Return a "data URL" that can be used directly in <img>
-    const mimeType = file.mimetype || "application/octet-stream";
-    const url = `data:${mimeType};base64,${base64}`;
-
-    return res.status(200).json({ url, key });
-  });
+    return new Response(
+      JSON.stringify({ error: "Upload failed" }),
+      { status: 500 }
+    )
+  }
 }
